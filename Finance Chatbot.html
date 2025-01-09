@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Finance Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #56b57b, #6581cd);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .chat-container {
+      width: 400px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+    }
+    .chat-header {
+      background: #8df1bc;
+      color: white;
+      padding: 10px 15px;
+      text-align: center;
+      font-size: 1.2rem;
+    }
+    .chat-body {
+      height: 300px;
+      overflow-y: auto;
+      padding: 10px;
+      background: #f7f7f7;
+    }
+    .message {
+      margin: 5px 0;
+      display: flex;
+    }
+    .user-message {
+      justify-content: flex-end;
+    }
+    .bot-message {
+      justify-content: flex-start;
+    }
+    .message-content {
+      max-width: 75%;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .user-message .message-content {
+      background: #6ccd91;
+      color: white;
+    }
+    .bot-message .message-content {
+      background: #e0e0e0;
+      color: black;
+    }
+    .chat-input {
+      display: flex;
+      border-top: 1px solid #ddd;
+    }
+    input {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      outline: none;
+      font-size: 1rem;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      background: #e14444;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #87c97b;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">Finance Chatbot</div>
+    <div class="chat-body" id="chatBody">
+      <div class="bot-message message">
+        <div class="message-content">Hello! How can I assist you with your finances today?</div>
+      </div>
+    </div>
+    <div class="chat-input">
+      <input type="text" id="userInput" placeholder="Type a message...">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const chatBody = document.getElementById('chatBody');
+    const userInput = document.getElementById('userInput');
+
+    let expenses = [];
+    let income = 0;
+
+    const messages = [
+      { input: /set income: \d+/i, response: handleSetIncome },
+      { input: /add expense: \d+ for \w+/i, response: handleAddExpense },
+      { input: /report/i, response: handleReport },
+      { input: /advice/i, response: handleAdvice },
+      { input: /help/i, response: "You can set your income by typing 'Set income: [amount]'. Add expenses with 'Add expense: [amount] for [category]'. Ask for 'report' to see expenses or 'advice' for financial tips." },
+      { input: /.*/, response: "I'm not sure how to help with that. Please try asking about expenses, income, or reports." }
+    ];
+
+    function sendMessage() {
+      const userMessage = userInput.value.trim();
+      if (!userMessage) return;
+
+      appendMessage(userMessage, 'user');
+      userInput.value = '';
+
+      const botResponse = getBotResponse(userMessage);
+      appendMessage(botResponse, 'bot');
+    }
+
+    function appendMessage(content, type) {
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('message', `${type}-message`);
+      const messageContent = document.createElement('div');
+      messageContent.classList.add('message-content');
+      messageContent.textContent = content;
+      messageDiv.appendChild(messageContent);
+      chatBody.appendChild(messageDiv);
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    function getBotResponse(input) {
+      for (const { input: regex, response } of messages) {
+        if (regex.test(input)) {
+          return typeof response === 'function' ? response(input) : response;
+        }
+      }
+      return "I'm here to help! Let me know what you need.";
+    }
+
+    function handleSetIncome(input) {
+      const match = input.match(/set income: (\d+)/i);
+      if (match) {
+        income = parseFloat(match[1]);
+        return `Your income has been set to ${income}.`;
+      }
+      return "I couldn't understand the income format. Try 'Set income: [amount]'.";
+    }
+
+    function handleAddExpense(input) {
+      const match = input.match(/add expense: (\d+) for (\w+)/i);
+      if (match) {
+        const amount = parseFloat(match[1]);
+        const category = match[2];
+        expenses.push({ amount, category });
+        return `Expense of ${amount} added for ${category}.`;
+      }
+      return "I couldn't understand the expense format. Try 'Add expense: [amount] for [category]'.";
+    }
+
+    function handleReport() {
+      if (expenses.length === 0) {
+        return "No expenses recorded yet.";
+      }
+      const summary = expenses.reduce((acc, { amount, category }) => {
+        acc[category] = (acc[category] || 0) + amount;
+        return acc;
+      }, {});
+
+      let report = "Here is your expense report:\n";
+      for (const [category, total] of Object.entries(summary)) {
+        report += `- ${category}: ${total}\n`;
+      }
+      return report.trim();
+    }
+
+    async function handleAdvice() {
+  const totalExpenses = expenses.reduce((sum, { amount }) => sum + amount, 0);
+
+  if (income === 0) {
+    return "Please set your income first using 'Set income: [amount]'.";
+  }
+
+  if (totalExpenses === 0) {
+    return "No expenses recorded yet. Start by adding some expenses.";
+  }
+
+  let advice = `Your total income is ${income} and your total expenses are ${totalExpenses}.\n`;
+
+  if (totalExpenses > income) {
+    advice += "You are spending more than your income. Consider cutting back on unnecessary expenses.\n";
+  } else {
+    advice += "Good job! Your expenses are within your income. Keep it up!\n";
+  }
+
+  // Expense breakdown
+  const categories = expenses.reduce((acc, { amount, category }) => {
+    acc[category] = (acc[category] || 0) + amount;
+    return acc;
+  }, {});
+
+  advice += "Expense breakdown:\n";
+  for (const [category, total] of Object.entries(categories)) {
+    advice += `- ${category}: ${total}\n`;
+  }
+
+  // Investment Advice
+  const investmentAdvice = await getInvestmentAdvice();
+  advice += "\nInvestment Advice:\n";
+  advice += investmentAdvice;
+
+  return advice.trim();
+}
+
+async function getInvestmentAdvice() {
+  const apiKey = "YOUR_API_KEY"; // Replace with your API key
+  const endpoint = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=MSFT&interval=5min&apikey=${apiKey}`;
+
+  try {
+    const response = await fetch(endpoint);
+    const data = await response.json();
+
+    // Parse the data for market insights (example: current and previous price)
+    const timeSeries = data["Time Series (5min)"];
+    const latestTime = Object.keys(timeSeries)[0];
+    const latestData = timeSeries[latestTime];
+    const currentPrice = parseFloat(latestData["4. close"]);
+
+    return `The current market price of MSFT is $${currentPrice}. This could be a good opportunity to start investing if you're new. Always ensure you diversify your portfolio and invest only what you can afford to lose.`;
+  } catch (error) {
+    return "Unable to fetch market data at the moment. Please try again later.";
+  }
+}
+
+async function sendMessage() {
+  const userMessage = userInput.value.trim();
+  if (!userMessage) return;
+
+  appendMessage(userMessage, 'user');
+  userInput.value = '';
+
+  const botResponse = await getBotResponse(userMessage); // Await bot response
+  appendMessage(botResponse, 'bot');
+}
+
+async function getBotResponse(input) {
+  for (const { input: regex, response } of messages) {
+    if (regex.test(input)) {
+      return typeof response === 'function' ? await response(input) : response; // Await if response is a function
+    }
+  }
+  return "I'm here to help! Let me know what you need.";
+}
+
+  </script>
+</body>
+</html>
